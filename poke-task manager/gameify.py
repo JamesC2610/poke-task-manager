@@ -8,9 +8,10 @@ import os
 class Trainer:
     def __init__(self, name):
         self.name = name
-        self.pokedex = set()
+        self.box = set()
         self.party = set()
-        self.pokedex_names = []
+        self.box_names = []
+        self.pokedex = []
         self.tasks = {}
         self.add_starter()
     
@@ -19,12 +20,12 @@ class Trainer:
 
     def add_starter(self):
         """
-        Adds the first pokemon to your pokedex, you can input
+        Adds the first pokemon to your box, you can input
         any base pokemon here. Always occurs when initialising trainer.
         """
         starter = input("\nChoose your starter pokemon!\n> ")
         while not starter in pokemon_list.keys():
-            print("\nThat pokemon is not in the pokedex, check your spelling and capitalization. The pokemon must also be pre-evolved.")
+            print("\nThat pokemon is not in the box, check your spelling and capitalization. The pokemon must also be pre-evolved.")
             starter = input("\nChoose your starter pokemon!\n> ")
         self.discover_pokemon(starter)
 
@@ -35,34 +36,36 @@ class Trainer:
         """
         for pokemon in self.party:
             pokemon.xp += xp
-            if pokemon.xp >= pokemon.lvl * 100:
+            while pokemon.xp >= pokemon.lvl * 100:
                 pokemon.lvl_up(self)
     
     def discover_pokemon(self, name):
         """
-        Adds a pokemon to the pokedex, telling the user that a
+        Adds a pokemon to the box, telling the user that a
         pokemon has been found.  
         input - name, Str, the name of the pokemon found.
         """
-        if not name in self.pokedex_names:
-            self.pokedex.add(Pokemon(name))
-            self.pokedex_names.append(name)
+        if not name in self.pokedex:
+            self.pokedex.append(name)
+        if not name in self.box_names:
+            self.box.add(Pokemon(name))
+            self.box_names.append(name)
             print(f"\n{name} has been discovered!")
 
     def add_to_party(self, name):
         """
-        Adds a discovered pokemon within a users pokedex to their party.  
+        Adds a discovered pokemon within a users box to their party.  
         Input - name, Str, name of the pokemon to be added
         """
         pokemon = self.find_pokemon(name)
-        if pokemon in self.pokedex:
+        if pokemon in self.box:
             if len(self.party) == 6:
                 print("\nParty is at max size, remove a pokemon first.")
             else:
                 self.party.add(pokemon)
                 print(f"\n{pokemon} has been added to your party!")
         else:
-            print(f"\n{pokemon} is not in your pokedex")
+            print(f"\n{pokemon} is not in your box")
 
     def remove_from_party(self, name):
         """
@@ -84,7 +87,7 @@ class Trainer:
         The unlock is cancelled if the pokemon has already been discovered.
         """
         pokemon = random.choice(list(pokemon_list.keys()))
-        if not pokemon in self.pokedex_names:
+        if not pokemon in self.box_names:
             print("\nWhat's this? A random pokemon has been found!")
             self.discover_pokemon(pokemon)
 
@@ -109,20 +112,24 @@ class Trainer:
         its given level.  
         Output - Str, the table of pokemon
         """
+        def func(i):
+            return i[1]
+        
         head = ["Pokemon", "Level", "Experience"]
         data = []
         for pokemon in self.party:
             data.append([pokemon.name, pokemon.lvl, str(pokemon.xp) + " / " + str(pokemon.lvl * 100)])
+            data.sort(key=func, reverse=True)
         return (tabulate(data, headers=head, tablefmt="grid"))
 
     def find_pokemon(self, name):
         """
         Given a pokemon's name, this finds and returns the Pokemon object
-        within the trainers pokedex and party  
+        within the trainers box and party  
         Input - name, Str, the name of the pokemon to be found  
         Output - pokemon, Pokemon, the pokemon object that has been found
         """
-        for pokemon in self.pokedex:
+        for pokemon in self.box:
             if pokemon.name == name:
                 return pokemon
         return None
@@ -141,12 +148,12 @@ class Trainer:
             self.tasks[task] = xp
             print("\nTask has been added\n")
 
-    def print_pokedex(self):
+    def print_box(self):
         """
-        Returns the entire pokedex, listing every pokemon found by the user.
+        Returns the entire box, listing every pokemon found by the user.
         Output - Str, the list of pokemon
         """
-        return ", ".join(self.pokedex_names)
+        return "Box:\n" + ", ".join(self.box_names)
     
     def party_names(self):
         """
@@ -165,7 +172,10 @@ class Trainer:
         for completing that task.
         Output - Str, the formatted table of each task
         """
-        data = [[i, str(self.tasks[i])] for i in self.tasks.keys()]
+        def func(i):
+            return i[1]
+        data = [[i, int(self.tasks[i])] for i in self.tasks.keys()]
+        data.sort(key=func)
         return tabulate(data, tablefmt="grid")
     
     def remove_task(self, task):
@@ -175,12 +185,15 @@ class Trainer:
         else:
             print("\nTask does not exist.")
 
+    def print_pokedex(self):
+        return "Pokedex:\n" + ", ".join(self.pokedex)
+
 
 class Pokemon:
     def __init__(self, name):
         self.name = name
         self.xp = 0
-        self.lvl = 1
+        self.lvl = 14
         self.evolutions = pokemon_list[name]
         self.stage = 1
         # self.shape = pokemon_shapes[name]
@@ -197,12 +210,15 @@ class Pokemon:
         self.xp -= self.lvl * 100
         self.lvl += 1
         print(f"\n{self.name} has leveled up, {self.name} is now level {self.lvl}!")
-        if self.lvl >= self.stage * 15 and self.evolutions > self.stage:
+        if self.lvl >= self.stage * 15 and len(self.evolutions) > self.stage:
             new_stage = self.evolutions[self.stage]
-            trainer.discover_pokemon(new_stage)
+            if isinstance(new_stage, tuple):
+                new_stage = random.choice(new_stage)
+            trainer.box_names[:] = [new_stage if x == self.name else x for x in trainer.box_names]
             self.stage += 1
             print(f"\n{self.name} has evolved into {new_stage}!")
             self.name = new_stage
+            trainer.pokedex.append(self.name)
 
     def print_pokemon(self):
         """
@@ -301,7 +317,7 @@ def main():
         print("")
         print("\nWhat would you like to do?")
 
-        num = int(input("\n 1 - Complete a task \n 2 - View your party \n 3 - View a specific pokemon \n 4 - Add to your party \n 5 - Remove from your party \n 6 - Add a task \n 7 - Remove a task \n 8 - View pokedex \n 9 - Save game \n 10 - Quit \n> "))
+        num = int(input("\n 1 - Complete a task \n 2 - View your party \n 3 - View a specific pokemon \n 4 - Add to your party \n 5 - Remove from your party \n 6 - Add a task \n 7 - Remove a task \n 8 - View Box \n 9 - View Pokedex \n 10 - Save game \n 11 - Quit \n> "))
         
         print("")
         print("*" * 50)
@@ -327,8 +343,8 @@ def main():
                 print(f"\n{pokemon} is not in party.")
 
         elif num == 4:
-            print("\nWhich pokemon from your pokedex would you like to add to your party? \n")
-            print(trainer.print_pokedex())
+            print("\nWhich pokemon from your box would you like to add to your party? \n")
+            print(trainer.print_box())
             pokemon = input("> ")
             trainer.add_to_party(pokemon)
 
@@ -348,9 +364,12 @@ def main():
             trainer.remove_task(task)
 
         elif num == 8:
-            print("Pokedex: \n" + trainer.print_pokedex())
+            print(trainer.print_box())
 
-        elif num == 10:
+        elif num == 9:
+            print(trainer.print_pokedex())
+
+        elif num == 11:
             save_game(trainer, name_set)
             running = False
             time.sleep(5)
