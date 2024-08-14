@@ -109,10 +109,10 @@ class Trainer:
         its given level.  
         Output - Str, the table of pokemon
         """
-        head = ["Pokemon", "Level"]
+        head = ["Pokemon", "Level", "Experience"]
         data = []
         for pokemon in self.party:
-            data.append([pokemon.name, pokemon.lvl])
+            data.append([pokemon.name, pokemon.lvl, str(pokemon.xp) + " / " + str(pokemon.lvl * 100)])
         return (tabulate(data, headers=head, tablefmt="grid"))
 
     def find_pokemon(self, name):
